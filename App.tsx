@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-import { Camera, CameraType } from 'expo-camera';
+import { StyleSheet, Text, View, TouchableOpacity, Image } from 'react-native';
+import { Camera, CameraCapturedPicture, CameraProps, CameraType } from 'expo-camera';
 
 export default function App() {
   const [hasPermission, setHasPermission] = useState<boolean>(false);
+  const [hasTakenPicture, setHasTakenPicture] = useState<boolean>(false);
+  const [picture, setPicture] = useState<CameraCapturedPicture>();
   const [type, setType] = useState(CameraType.back);
+
+  // Camera data
+  let camera: Camera;
 
   useEffect(() => {
     (async () => {
@@ -15,9 +20,25 @@ export default function App() {
   if (!hasPermission)
     return <Text>No access to camera</Text>;
   
+  if(hasTakenPicture && picture)
+    return(
+      <View style={styles.container}>
+        <Image style={styles.image} source={ { uri: picture.uri }}></Image>
+        <View style={styles.backButtonContainer}>
+          <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => {
+                setHasTakenPicture(false)
+              }}>
+            <Text style={styles.text}> Back </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    )
+
   return (
     <View style={styles.container}>
-      <Camera style={styles.camera} type={type}>
+      <Camera style={styles.camera} type={type} ref={(ref: Camera) => camera = ref}>
         <View style={styles.flipButtonContainer}>
           <TouchableOpacity
             style={styles.flipButton}
@@ -30,9 +51,7 @@ export default function App() {
         <View style={styles.captureButtonContainer}>
           <TouchableOpacity
               style={styles.captureButton}
-              onPress={() => {
-                console.log("CAPTURE");
-              }}>
+              onPress={() => takePicture()}>
             </TouchableOpacity>
         </View>
       </Camera>
@@ -43,6 +62,12 @@ export default function App() {
     const { status } = await Camera.requestCameraPermissionsAsync();
     setHasPermission(status === 'granted');
   }
+
+  async function takePicture(): Promise<void> {
+    setHasTakenPicture(true);
+    const capturedPicture: CameraCapturedPicture = await camera.takePictureAsync();
+    setPicture(capturedPicture);
+  }
 }
 
 const styles = StyleSheet.create({
@@ -52,11 +77,25 @@ const styles = StyleSheet.create({
   camera: {
     flex: 1,
   },
+  image: {
+    flex: 1,
+  },
+  backButtonContainer: {
+    backgroundColor: 'transparent',
+    position: 'absolute',
+    bottom: 20,
+    left: 20
+  },
   flipButtonContainer: {
     flex: 1,
     backgroundColor: 'transparent',
     flexDirection: 'row',
     margin: 20,
+  },
+  backButton: {
+    flex: 0.1,
+    alignSelf: 'flex-end',
+    alignItems: 'center',
   },
   flipButton: {
     flex: 0.1,
