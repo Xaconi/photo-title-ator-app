@@ -1,6 +1,5 @@
 node_modules/
 .expo/
-.expo-shared/
 dist/
 android/
 ios/
@@ -74,5 +73,3 @@ buck-out/
 .expo/
 web-build/
 dist/
-
-# @end expo-cli
