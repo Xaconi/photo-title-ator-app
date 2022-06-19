@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Image } from 'react-native';
 import { Camera, CameraCapturedPicture, CameraProps, CameraType } from 'expo-camera';
+import { saveToLibraryAsync } from 'expo-media-library';
 
 export default function App() {
   const [hasPermission, setHasPermission] = useState<boolean>(false);
@@ -27,11 +28,16 @@ export default function App() {
         <View style={styles.backButtonContainer}>
           <TouchableOpacity
               style={styles.backButton}
-              onPress={() => {
-                setHasTakenPicture(false)
-              }}>
+              onPress={() => setHasTakenPicture(false) }>
             <Text style={styles.text}> Back </Text>
           </TouchableOpacity>
+        </View>
+        <View style={styles.centerAbsoluteContainer}>
+          <TouchableOpacity
+              style={styles.saveButton}
+              onPress={() => savePicture(picture)}>
+                <Text style={styles.text}> Save </Text>
+            </TouchableOpacity>
         </View>
       </View>
     )
@@ -48,7 +54,7 @@ export default function App() {
             <Text style={styles.text}> Flip </Text>
           </TouchableOpacity>
         </View>
-        <View style={styles.captureButtonContainer}>
+        <View style={styles.centerAbsoluteContainer}>
           <TouchableOpacity
               style={styles.captureButton}
               onPress={() => takePicture()}>
@@ -67,6 +73,11 @@ export default function App() {
     setHasTakenPicture(true);
     const capturedPicture: CameraCapturedPicture = await camera.takePictureAsync();
     setPicture(capturedPicture);
+  }
+
+  async function savePicture(picture: CameraCapturedPicture): Promise<void> {
+    const savedImage = await saveToLibraryAsync(picture?.uri);
+    setHasTakenPicture(false);
   }
 }
 
@@ -102,7 +113,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     alignItems: 'center',
   },
-  captureButtonContainer: {
+  centerAbsoluteContainer: {
     alignSelf: 'center',
     alignItems: 'center',
     position: 'absolute',
@@ -114,6 +125,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     borderRadius: 50,
     backgroundColor: '#fff'
+  },
+  saveButton: {
+    flex: 1
   },
   text: {
     fontSize: 18,
