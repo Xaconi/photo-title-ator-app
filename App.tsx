@@ -1,16 +1,28 @@
-import React, { useState, useEffect } from 'react';
+// Core
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Image } from 'react-native';
-import { Camera, CameraCapturedPicture, CameraProps, CameraType } from 'expo-camera';
-import { saveToLibraryAsync } from 'expo-media-library';
+
+// Libs
+import { 
+  Camera, 
+  CameraDevice, 
+  CameraPermissionRequestResult, 
+  CameraPermissionStatus, 
+  PhotoFile, 
+  useCameraDevices 
+} from 'react-native-vision-camera';
+import ImageMarker, { TextBackgroundType } from "react-native-image-marker";
+
 
 export default function App() {
   const [hasPermission, setHasPermission] = useState<boolean>(false);
   const [hasTakenPicture, setHasTakenPicture] = useState<boolean>(false);
-  const [picture, setPicture] = useState<CameraCapturedPicture>();
-  const [type, setType] = useState(CameraType.back);
+  const [type, setType] = useState<'front' | 'back'>('back');
+  const [picture, setPicture] = useState<string>();
 
-  // Camera data
-  let camera: Camera;
+  const devices = useCameraDevices()
+  let device = devices[type];
+  const camera = useRef<Camera>(null)
 
   useEffect(() => {
     (async () => {
@@ -18,13 +30,20 @@ export default function App() {
     })();
   }, []);
 
+  useEffect(() => {
+    device = devices[type];
+  }, [type]);
+
   if (!hasPermission)
     return <Text>No access to camera</Text>;
+
+  if (!device)
+    return <Text>No device available</Text>;
   
   if(hasTakenPicture && picture)
     return(
       <View style={styles.container}>
-        <Image style={styles.image} source={ { uri: picture.uri }}></Image>
+        <Image style={styles.image} source={ { uri: picture }}></Image>
         <View style={styles.backButtonContainer}>
           <TouchableOpacity
               style={styles.backButton}
@@ -44,40 +63,68 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      <Camera style={styles.camera} type={type} ref={(ref: Camera) => camera = ref}>
-        <View style={styles.flipButtonContainer}>
-          <TouchableOpacity
-            style={styles.flipButton}
-            onPress={() => {
-              setType(type === CameraType.back ? CameraType.front : CameraType.back);
-            }}>
-            <Text style={styles.text}> Flip </Text>
+      <Camera 
+        style={StyleSheet.absoluteFill}
+        device={device!} 
+        isActive={true}
+        photo={true}
+        ref={camera}
+      />
+      <View style={styles.flipButtonContainer}>
+        <TouchableOpacity
+          style={styles.flipButton}
+          onPress={() => {
+            setType(type === 'back' ? 'front' : 'back');
+          }}>
+          <Text style={styles.text}> Flip </Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.centerAbsoluteContainer}>
+        <TouchableOpacity
+            style={styles.captureButton}
+            onPress={() => takePicture()}>
           </TouchableOpacity>
-        </View>
-        <View style={styles.centerAbsoluteContainer}>
-          <TouchableOpacity
-              style={styles.captureButton}
-              onPress={() => takePicture()}>
-            </TouchableOpacity>
-        </View>
-      </Camera>
+      </View>
     </View>
   );
 
   async function getPermission(): Promise<void> {
-    const { status } = await Camera.requestCameraPermissionsAsync();
-    setHasPermission(status === 'granted');
+    const currentStatus: CameraPermissionRequestResult = await Camera.requestCameraPermission();
+    setHasPermission(currentStatus === 'authorized');
+    setType('back');
   }
 
   async function takePicture(): Promise<void> {
-    setHasTakenPicture(true);
-    const capturedPicture: CameraCapturedPicture = await camera.takePictureAsync();
-    setPicture(capturedPicture);
+    try {
+      if (camera.current == null) throw new Error('Camera Ref is Null');
+      console.log('Photo taking ....');
+      const photo = await camera.current.takePhoto();
+      console.log(photo);
+      setHasTakenPicture(true);
+      setPicture(`file://${photo.path}`);
+    }
+    catch(error: any) {
+      console.error(error);
+    }
   }
 
-  async function savePicture(picture: CameraCapturedPicture): Promise<void> {
-    const savedImage = await saveToLibraryAsync(picture?.uri);
-    setHasTakenPicture(false);
+  async function savePicture(picture: string): Promise<void> {
+    ImageMarker.markText({
+      src: picture,
+      text: 'text marker', 
+      X: 150,
+      Y: 150, 
+      color: '#FF0000',
+      fontName: 'Arial-BoldItalicMT',
+      fontSize: 44,
+      scale: 1, 
+      quality: 100
+   }).then((res: any) => {
+       setPicture(`file://${res}`);
+      console.log("the path is"+res)
+   }).catch((err) => {
+      console.log(err)
+   })
   }
 }
 
