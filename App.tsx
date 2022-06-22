@@ -1,17 +1,15 @@
 // Core
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Image } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Image, PermissionsAndroid, Platform } from 'react-native';
 
 // Libs
 import { 
   Camera, 
-  CameraDevice, 
-  CameraPermissionRequestResult, 
-  CameraPermissionStatus, 
-  PhotoFile, 
+  CameraPermissionRequestResult,
   useCameraDevices 
 } from 'react-native-vision-camera';
 import ImageMarker, { TextBackgroundType } from "react-native-image-marker";
+import CameraRoll from "@react-native-community/cameraroll";
 
 
 export default function App() {
@@ -109,7 +107,7 @@ export default function App() {
   }
 
   async function savePicture(picture: string): Promise<void> {
-    ImageMarker.markText({
+    const newImageUri: string = await ImageMarker.markText({
       src: picture,
       text: 'text marker', 
       X: 150,
@@ -119,13 +117,27 @@ export default function App() {
       fontSize: 44,
       scale: 1, 
       quality: 100
-   }).then((res: any) => {
-       setPicture(`file://${res}`);
-      console.log("the path is"+res)
-   }).catch((err) => {
-      console.log(err)
-   })
+    });
+   
+    if (Platform.OS === "android" && !(await hasAndroidPermission()))
+      return;
+
+    CameraRoll.save(newImageUri);
+    setHasTakenPicture(false);
   }
+
+  async function hasAndroidPermission() {
+    const permission = PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE;
+  
+    const hasPermission = await PermissionsAndroid.check(permission);
+    if (hasPermission) {
+      return true;
+    }
+  
+    const status = await PermissionsAndroid.request(permission);
+    return status === 'granted';
+  }
+  
 }
 
 const styles = StyleSheet.create({
